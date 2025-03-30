@@ -203,7 +203,26 @@ body {
   background-color: rgba(40, 180, 70, 0.2); /* Green with transparency */
   width: 0%; /* Start at 0% width */
   z-index: -1; /* Place behind the task content */
-  transition: width 1s linear;
+  transition: width 0.5s ease; /* Smoother transition */
+  cursor: default; /* Normal cursor on the background itself */
+}
+
+.task-progress-handle {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 8px; /* Width of the handle */
+  background-color: rgba(40, 180, 70, 0.7); /* Darker green for the handle */
+  cursor: ew-resize; /* Horizontal resize cursor */
+  z-index: 3; /* Above other content */
+  right: 0; /* Positioned at the end of the progress bar */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.2s ease;
+}
+
+/* Show handle on hover */
+.task-item.active:hover .task-progress-handle {
+  opacity: 1;
 }
 
 .task-info,

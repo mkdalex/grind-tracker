@@ -1,9 +1,6 @@
-// Initial tasks
+// Task data structure and state variables
 let tasks = [];
-
-let activeTaskId = null;
-let taskTime = 0;
-let timerInterval = null;
+let activeTasks = {}; // Format: { taskId: { timeSpent: seconds, interval: intervalId } }
 
 // Motivational quotes
 const motivationalQuotes = [
@@ -36,24 +33,19 @@ const addTaskBtn = document.getElementById("add-task-btn");
 const progressCircle = document.getElementById("progress-circle");
 const percentageText = document.getElementById("progress-percentage");
 
-// Initialize
-function init() {
-  // Load tasks from local storage
-  loadTasksFromStorage();
+// =============================================
+// Initialization and Setup
+// =============================================
 
-  // Load active task state
-  loadActiveTaskState();
+function init() {
+  loadTasksFromStorage();
+  loadActiveTasksState();
 
   updateTimeLeft();
   updateTaskList();
 
-  // Set up timer to update time left every minute
   setInterval(updateTimeLeft, 60000);
-
-  // Set up timer to change motivational quote
   setInterval(changeQuote, 15000);
-
-  // Set up timer to update progress circle more frequently
   setInterval(() => {
     const now = new Date();
     const endOfDay = new Date();
@@ -67,42 +59,37 @@ function init() {
     updateProgressCircle(totalMinutes, minutesLeft);
   }, 5000);
 
-  // Add event listener for adding new tasks
   addTaskBtn.addEventListener("click", addNewTask);
-
-  // Set up the time perspective modal
   setupTimePerspectiveModal();
 }
 
-// Set up time perspective modal
 function setupTimePerspectiveModal() {
-  const progressCircle = document.getElementById("progress-circle-svg");
+  const progressCircleSvg = document.getElementById("progress-circle-svg");
   const modal = document.getElementById("time-perspective-modal");
   const closeButton = document.getElementById("close-modal");
 
-  // Open modal when clicking on progress circle
-  progressCircle.addEventListener("click", () => {
+  progressCircleSvg.addEventListener("click", () => {
     updateTimePerspective();
     modal.classList.add("active");
   });
 
-  // Close modal when clicking on close button
   closeButton.addEventListener("click", () => {
     modal.classList.remove("active");
   });
 
-  // Close modal when clicking outside content
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       modal.classList.remove("active");
     }
   });
 
-  // Generate life grid
   generateLifeGrid();
 }
 
-// Update time left in the day
+// =============================================
+// Time and Progress Tracking
+// =============================================
+
 function updateTimeLeft() {
   const now = new Date();
   const endOfDay = new Date();
@@ -111,11 +98,9 @@ function updateTimeLeft() {
   const minutesLeft = Math.floor((endOfDay - now) / 60000);
   timeLeftEl.textContent = formatTime(minutesLeft);
 
-  // Also update time needed
   updateTimeNeeded();
 }
 
-// Update time needed for all incomplete tasks
 function updateTimeNeeded() {
   const totalMinutes = tasks
     .filter((task) => !task.completed)
@@ -123,7 +108,6 @@ function updateTimeNeeded() {
 
   timeNeededEl.textContent = formatTime(totalMinutes);
 
-  // Check if we have a time deficit
   const now = new Date();
   const endOfDay = new Date();
   endOfDay.setHours(23, 59, 59);
@@ -135,48 +119,47 @@ function updateTimeNeeded() {
     timeNeededEl.style.color = "#55ff55";
   }
 
-  // Update progress circle
   updateProgressCircle(totalMinutes, minutesLeft);
 
-  // Update tasks completed
   const completedCount = tasks.filter((task) => task.completed).length;
   const totalCount = tasks.length;
   document.getElementById(
     "tasks-completed"
   ).textContent = `${completedCount}/${totalCount}`;
 
-  // Update time efficiency
   const efficiencyEl = document.getElementById("time-efficiency");
-  if (activeTaskId) {
-    efficiencyEl.textContent = "Active ⚡";
-    efficiencyEl.style.color = "#55ff55";
+  const activeTaskCount = Object.keys(activeTasks).length;
+
+  if (activeTaskCount > 0) {
+    const runningCount = Object.values(activeTasks).filter(
+      (t) => t.interval
+    ).length;
+
+    if (runningCount > 0) {
+      efficiencyEl.textContent = `Active ${runningCount}/${activeTaskCount} ⚡`;
+      efficiencyEl.style.color = "#55ff55";
+    } else {
+      efficiencyEl.textContent = "Paused ⏸️";
+      efficiencyEl.style.color = "#ffaa55";
+    }
   } else {
     efficiencyEl.textContent = "Inactive ⚠️";
     efficiencyEl.style.color = "#ff5555";
   }
 }
 
-// Update progress circle
 function updateProgressCircle(totalMinutes, minutesLeft) {
-  const progressCircle = document.getElementById("progress-circle");
-  const percentageText = document.getElementById("progress-percentage");
-
-  const circumference = 2 * Math.PI * 45; // r = 45
-
-  // Calculate percentage of day planned
+  const circumference = 2 * Math.PI * 45;
   const percentage = Math.min(
     100,
     Math.round((totalMinutes / (minutesLeft || 1)) * 100)
   );
 
-  // Update stroke dash offset
   const offset = circumference - (percentage / 100) * circumference;
   progressCircle.style.strokeDashoffset = offset;
 
-  // Update percentage text
   percentageText.textContent = `${percentage}%`;
 
-  // Change color based on percentage
   if (percentage > 90) {
     progressCircle.classList.add("progress-danger");
   } else {
@@ -184,206 +167,178 @@ function updateProgressCircle(totalMinutes, minutesLeft) {
   }
 }
 
-// Format minutes to hours and minutes
-function formatTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours}h ${mins}m`;
+function updateProgressBackground(task) {
+  const taskEl = document.querySelector(`.task-item[data-task-id="${task.id}"]`);
+  if (!taskEl) return;
+  
+  let progressBg = taskEl.querySelector('.task-progress-background');
+  let progressHandle = taskEl.querySelector('.task-progress-handle');
+  
+  if (!progressBg) {
+    progressBg = document.createElement('div');
+    progressBg.className = 'task-progress-background';
+    taskEl.appendChild(progressBg);
+    
+    // Create the handle element
+    progressHandle = document.createElement('div');
+    progressHandle.className = 'task-progress-handle';
+    taskEl.appendChild(progressHandle);
+    
+    // Setup drag functionality
+    setupProgressDragging(progressBg, progressHandle, task);
+  }
+  
+  const timeSpent = activeTasks[task.id].timeSpent;
+  const timeSpentMinutes = timeSpent / 60;
+  const percentComplete = Math.min(100, (timeSpentMinutes / task.timeAllocated) * 100);
+  
+  // Update width of the progress background
+  progressBg.style.width = `${percentComplete}%`;
+  
+  // Position the handle at the end of the progress bar
+  progressHandle.style.left = `calc(${percentComplete}% - 4px)`;
+  
+  // Adjust the intensity as it progresses
+  const alpha = 0.2 + (percentComplete / 100) * 0.1;
+  progressBg.style.backgroundColor = `rgba(40, 180, 70, ${alpha})`;
+  
+  // Update the timer display
+  const timerDisplay = taskEl.querySelector('.task-timer');
+  if (timerDisplay) {
+    timerDisplay.textContent = formatSeconds(timeSpent);
+  }
 }
 
-// Format seconds for the timer display
-function formatSeconds(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
-}
 
-// Change the motivational quote
-function changeQuote() {
-  const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
-  motivationEl.textContent = motivationalQuotes[randomIndex];
-
-  // Add a flash effect to highlight the new quote
-  motivationEl.style.backgroundColor = "#555";
-  setTimeout(() => {
-    motivationEl.style.backgroundColor = "#333";
-  }, 300);
-}
-
-// Update the task list in the DOM
-function updateTaskList() {
-  taskListEl.innerHTML = "";
-
-  tasks.forEach((task) => {
-    const taskEl = document.createElement("div");
-    taskEl.className = `task-item ${task.completed ? "completed" : ""} ${
-      activeTaskId === task.id ? "active" : ""
-    }`;
-
-    const isActive = activeTaskId === task.id;
-
-    taskEl.innerHTML = `
-      <div class="task-info">
-        <div class="task-name ${task.completed ? "completed" : ""}">${
-      task.name
-    }</div>
-        <div class="task-time">Allocated: ${formatTime(
-          task.timeAllocated
-        )}</div>
-      </div>
+function setupProgressDragging(progressElement, handleElement, task) {
+  let isDragging = false;
+  let startX, startWidth;
+  
+  const taskEl = progressElement.closest('.task-item');
+  if (!taskEl) return;
+  
+  // Use the handle for dragging
+  handleElement.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = parseFloat(progressElement.style.width) || 0;
+    e.preventDefault();
+    
+    // Add a class to show we're dragging
+    taskEl.classList.add('dragging');
+  });
+  
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    
+    const taskRect = taskEl.getBoundingClientRect();
+    const offsetX = e.clientX - startX;
+    
+    // Calculate new width percentage based on task element width
+    const newWidthPercent = Math.min(100, Math.max(0, startWidth + (offsetX / taskRect.width) * 100));
+    
+    // Update the progress bar width
+    progressElement.style.width = `${newWidthPercent}%`;
+    
+    // Update the handle position
+    handleElement.style.left = `calc(${newWidthPercent}% - 4px)`;
+    
+    // Update the time spent based on the new width
+    const taskId = parseInt(taskEl.dataset.taskId);
+    if (activeTasks[taskId]) {
+      const newTimeMinutes = (newWidthPercent / 100) * task.timeAllocated;
+      activeTasks[taskId].timeSpent = Math.round(newTimeMinutes * 60);
       
-      ${
-        isActive
-          ? `<div class="task-timer">${formatSeconds(taskTime)}</div>`
-          : ""
+      // Update the timer display
+      const timerDisplay = taskEl.querySelector('.task-timer');
+      if (timerDisplay) {
+        timerDisplay.textContent = formatSeconds(activeTasks[taskId].timeSpent);
       }
       
-      <div class="button-group">
-        ${
-          !task.completed
-            ? `
-          <button class="btn-${
-            isActive && timerInterval ? "pause" : "play"
-          }" onclick="toggleTimer(${task.id})">
-            ${isActive && timerInterval ? "⏸️" : "▶️"}
-          </button>
-          <button class="btn-complete" onclick="completeTask(${
-            task.id
-          })">✓</button>
-        `
-            : ""
+      // Update the "Spent" text if it exists
+      const taskTime = taskEl.querySelector('.task-time');
+      if (taskTime) {
+        const currentText = taskTime.textContent;
+        const spentIndex = currentText.indexOf('• Spent:');
+        if (spentIndex !== -1) {
+          const baseText = currentText.substring(0, spentIndex);
+          taskTime.textContent = `${baseText}• Spent: ${formatTime(Math.floor(activeTasks[taskId].timeSpent / 60))}`;
         }
-        <button class="btn-delete" onclick="deleteTask(${task.id})">🗑️</button>
-      </div>
-    `;
-
-    taskListEl.appendChild(taskEl);
-
-    // Add progress background for active task
-    if (isActive) {
-      const progressBg = document.createElement("div");
-      progressBg.className = "task-progress-background";
-      taskEl.appendChild(progressBg);
-
-      // Set initial progress
-      setTimeout(() => updateProgressBackground(task), 50);
+      }
     }
   });
-
-  updateTimeNeeded();
+  
+  document.addEventListener('mouseup', function() {
+    if (isDragging) {
+      isDragging = false;
+      taskEl.classList.remove('dragging');
+      saveActiveTasksState();
+    }
+  });
 }
-// Toggle timer for a task
+
+// =============================================
+// Task Management
+// =============================================
+
 function toggleTimer(taskId) {
   const task = tasks.find((t) => t.id === taskId);
   if (!task) return;
 
-  if (activeTaskId === taskId) {
-    // Pause/resume current task
-    if (timerInterval) {
-      // Pause
-      clearInterval(timerInterval);
-      timerInterval = null;
+  if (activeTasks[taskId]) {
+    if (activeTasks[taskId].interval) {
+      clearInterval(activeTasks[taskId].interval);
+      activeTasks[taskId].interval = null;
     } else {
-      // Resume
-      timerInterval = setInterval(() => {
-        taskTime++;
+      activeTasks[taskId].interval = setInterval(() => {
+        activeTasks[taskId].timeSpent++;
         updateProgressBackground(task);
+        saveActiveTasksState();
       }, 1000);
     }
   } else {
-    // Switch to new task
-    if (timerInterval) {
-      clearInterval(timerInterval);
-    }
-
-    activeTaskId = taskId;
-    taskTime = 0;
-
-    timerInterval = setInterval(() => {
-      taskTime++;
-      updateProgressBackground(task);
-    }, 1000);
+    activeTasks[taskId] = {
+      timeSpent: 0,
+      interval: setInterval(() => {
+        activeTasks[taskId].timeSpent++;
+        updateProgressBackground(task);
+        saveActiveTasksState();
+      }, 1000),
+    };
   }
 
-  // Save active task state to storage
-  saveActiveTaskState();
-
+  saveActiveTasksState();
   updateTaskList();
 }
 
-function updateProgressBackground(task) {
-  // Find the active task element
-  const activeTaskEl = document.querySelector(".task-item.active");
-  if (!activeTaskEl) return;
-
-  // Find or create the progress background
-  let progressBg = activeTaskEl.querySelector(".task-progress-background");
-  if (!progressBg) {
-    progressBg = document.createElement("div");
-    progressBg.className = "task-progress-background";
-    activeTaskEl.appendChild(progressBg);
-  }
-
-  // Calculate progress percentage based on time spent vs allocated time in minutes
-  const timeSpentMinutes = taskTime / 60;
-  const percentComplete = Math.min(
-    100,
-    (timeSpentMinutes / task.timeAllocated) * 100
-  );
-
-  // Update the width of the progress background
-  progressBg.style.width = `${percentComplete}%`;
-
-  // Optional: Adjust the intensity as it progresses
-  const alpha = 0.2 + (percentComplete / 100) * 0.1; // Increase opacity slightly as it progresses
-  progressBg.style.backgroundColor = `rgba(40, 180, 70, ${alpha})`;
-
-  // Update the timer display separately from the full list update
-  const timerDisplay = activeTaskEl.querySelector(".task-timer");
-  if (timerDisplay) {
-    timerDisplay.textContent = formatSeconds(taskTime);
-  }
-}
-
-// Mark a task as completed
 function completeTask(taskId) {
+  if (activeTasks[taskId] && activeTasks[taskId].interval) {
+    clearInterval(activeTasks[taskId].interval);
+    delete activeTasks[taskId];
+    saveActiveTasksState();
+  }
+
   tasks = tasks.map((task) =>
     task.id === taskId ? { ...task, completed: true } : task
   );
 
-  // Save to local storage
   saveTasksToStorage();
-
-  if (activeTaskId === taskId) {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-    activeTaskId = null;
-  }
-
   updateTaskList();
 }
 
-// Delete a task
 function deleteTask(taskId) {
+  if (activeTasks[taskId] && activeTasks[taskId].interval) {
+    clearInterval(activeTasks[taskId].interval);
+    delete activeTasks[taskId];
+    saveActiveTasksState();
+  }
+
   tasks = tasks.filter((task) => task.id !== taskId);
 
-  // Save to local storage
   saveTasksToStorage();
-
-  if (activeTaskId === taskId) {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-    activeTaskId = null;
-  }
-
   updateTaskList();
 }
 
-// Add a new task
 function addNewTask() {
   const name = newTaskNameEl.value.trim();
   if (!name) return;
@@ -399,67 +354,91 @@ function addNewTask() {
 
   tasks.push(newTask);
 
-  // Save to local storage
   saveTasksToStorage();
-
   newTaskNameEl.value = "";
 
   updateTaskList();
 }
 
-// Save tasks to local storage
-function saveTasksToStorage() {
-  localStorage.setItem("grindTrackerTasks", JSON.stringify(tasks));
-}
+// =============================================
+// UI Updates
+// =============================================
 
-// Load tasks from local storage
-function loadTasksFromStorage() {
-  const storedTasks = localStorage.getItem("grindTrackerTasks");
-  if (storedTasks) {
-    tasks = JSON.parse(storedTasks);
-  }
-}
-
-// Save active task state to local storage
-function saveActiveTaskState() {
-  const activeTaskState = {
-    activeTaskId,
-    taskTime,
-  };
-  localStorage.setItem(
-    "grindTrackerActiveTask",
-    JSON.stringify(activeTaskState)
-  );
-}
-
-// Load active task state from local storage
-function loadActiveTaskState() {
-  const storedActiveTask = localStorage.getItem("grindTrackerActiveTask");
-  if (storedActiveTask) {
-    const { activeTaskId: storedId, taskTime: storedTime } =
-      JSON.parse(storedActiveTask);
-
-    // Only restore if the task still exists
-    if (storedId && tasks.some((task) => task.id === storedId)) {
-      activeTaskId = storedId;
-      taskTime = storedTime;
-
-      // Don't automatically resume the timer, but show the current state
+function updateTaskList() {
+  taskListEl.innerHTML = '';
+  
+  tasks.forEach(task => {
+    const taskEl = document.createElement('div');
+    taskEl.className = `task-item ${task.completed ? 'completed' : ''} ${activeTasks[task.id] ? 'active' : ''}`;
+    taskEl.dataset.taskId = task.id;
+    
+    const isActive = !!activeTasks[task.id];
+    const isRunning = isActive && activeTasks[task.id].interval;
+    const timeSpent = isActive ? activeTasks[task.id].timeSpent : 0;
+    
+    taskEl.innerHTML = `
+      <div class="task-info">
+        <div class="task-name ${task.completed ? 'completed' : ''}">${task.name}</div>
+        <div class="task-time">
+          Allocated: ${formatTime(task.timeAllocated)}
+          ${isActive ? `• Spent: ${formatTime(Math.floor(timeSpent / 60))}` : ''}
+        </div>
+      </div>
+      
+      ${isActive ? `<div class="task-timer">${formatSeconds(timeSpent)}</div>` : ''}
+      
+      <div class="button-group">
+        ${!task.completed ? `
+          <button class="btn-${isRunning ? 'pause' : 'play'}" onclick="toggleTimer(${task.id})">
+            ${isRunning ? '⏸️' : '▶️'}
+          </button>
+          <button class="btn-complete" onclick="completeTask(${task.id})">✓</button>
+        ` : ''}
+        <button class="btn-delete" onclick="deleteTask(${task.id})">🗑️</button>
+      </div>
+    `;
+    
+    taskListEl.appendChild(taskEl);
+    
+    // Add progress elements for active tasks
+    if (isActive) {
+      // Add the progress background
+      const progressBg = document.createElement('div');
+      progressBg.className = 'task-progress-background';
+      taskEl.appendChild(progressBg);
+      
+      // Add the separate handle element
+      const handle = document.createElement('div');
+      handle.className = 'task-progress-handle';
+      taskEl.appendChild(handle);
+      
+      // Set up dragging
+      setupProgressDragging(progressBg, handle, task);
+      
+      // Set initial progress
+      const percentComplete = Math.min(100, (timeSpent / 60 / task.timeAllocated) * 100);
+      progressBg.style.width = `${percentComplete}%`;
+      
+      // Position the handle at the progress point
+      handle.style.left = `calc(${percentComplete}% - 4px)`;
+      
+      // Set background alpha
+      const alpha = 0.2 + (percentComplete / 100) * 0.1;
+      progressBg.style.backgroundColor = `rgba(40, 180, 70, ${alpha})`;
     }
-  }
+  });
+  
+  updateTimeNeeded();
 }
 
-// Update time perspective information
 function updateTimePerspective() {
   const now = new Date();
 
-  // Calculate week progress
-  const dayOfWeek = now.getDay() || 7; // Make Sunday 7 instead of 0
+  const dayOfWeek = now.getDay() || 7;
   const weekProgress = Math.round((dayOfWeek / 7) * 100);
   document.getElementById("week-progress").textContent = `${weekProgress}%`;
   document.getElementById("week-bar").style.width = `${weekProgress}%`;
 
-  // Calculate month progress
   const dayOfMonth = now.getDate();
   const lastDayOfMonth = new Date(
     now.getFullYear(),
@@ -470,7 +449,6 @@ function updateTimePerspective() {
   document.getElementById("month-progress").textContent = `${monthProgress}%`;
   document.getElementById("month-bar").style.width = `${monthProgress}%`;
 
-  // Calculate year progress
   const startOfYear = new Date(now.getFullYear(), 0, 1);
   const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
   const yearProgress = Math.round(
@@ -479,10 +457,8 @@ function updateTimePerspective() {
   document.getElementById("year-progress").textContent = `${yearProgress}%`;
   document.getElementById("year-bar").style.width = `${yearProgress}%`;
 
-  // Set productive hours (would normally be calculated from actual data)
-  // For demo purposes, using a placeholder value
   const productiveHours = 8.5;
-  const maxWeeklyHours = 40; // Assuming 40 productive hours per week is the goal
+  const maxWeeklyHours = 40;
   const productivePercentage = Math.round(
     (productiveHours / maxWeeklyHours) * 100
   );
@@ -493,11 +469,9 @@ function updateTimePerspective() {
     "productive-bar"
   ).style.width = `${productivePercentage}%`;
 
-  // Update motivation message
   updatePerspectiveMotivation(weekProgress, monthProgress, yearProgress);
 }
 
-// Update motivation message based on time progression
 function updatePerspectiveMotivation(
   weekProgress,
   monthProgress,
@@ -519,12 +493,12 @@ function updatePerspectiveMotivation(
   motivationEl.textContent = messages[randomIndex];
 }
 
-// Generate life grid visualization
 function generateLifeGrid() {
   const lifeGridEl = document.getElementById("life-grid");
+  if (!lifeGridEl) return;
+
   lifeGridEl.innerHTML = "";
 
-  // Assuming 80 years = 4,160 weeks (showing just one year = 52 weeks for simplicity)
   const totalWeeks = 52;
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -546,7 +520,69 @@ function generateLifeGrid() {
   }
 }
 
-// Make the toggle timer and task functions globally accessible
+function changeQuote() {
+  const randomIndex = Math.floor(Math.random() * motivationalQuotes.length);
+  motivationEl.textContent = motivationalQuotes[randomIndex];
+
+  motivationEl.style.backgroundColor = "#555";
+  setTimeout(() => {
+    motivationEl.style.backgroundColor = "#333";
+  }, 300);
+}
+
+// =============================================
+// Storage & Data Management
+// =============================================
+
+function saveTasksToStorage() {
+  localStorage.setItem("grindTrackerTasks", JSON.stringify(tasks));
+}
+
+function loadTasksFromStorage() {
+  const storedTasks = localStorage.getItem("grindTrackerTasks");
+  if (storedTasks) {
+    tasks = JSON.parse(storedTasks);
+  }
+}
+
+function saveActiveTasksState() {
+  localStorage.setItem("grindTrackerActiveTasks", JSON.stringify(activeTasks));
+}
+
+function loadActiveTasksState() {
+  const storedActiveTasks = localStorage.getItem("grindTrackerActiveTasks");
+  if (storedActiveTasks) {
+    const parsedTasks = JSON.parse(storedActiveTasks);
+
+    Object.keys(parsedTasks).forEach((taskId) => {
+      const id = parseInt(taskId);
+      if (tasks.some((task) => task.id === id)) {
+        activeTasks[id] = {
+          timeSpent: parsedTasks[taskId].timeSpent,
+          interval: null,
+        };
+      }
+    });
+  }
+}
+
+// =============================================
+// Utility Functions
+// =============================================
+
+function formatTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m`;
+}
+
+function formatSeconds(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}:${secs < 10 ? "0" : ""}${secs}`;
+}
+
+// Make functions globally accessible
 window.toggleTimer = toggleTimer;
 window.completeTask = completeTask;
 window.deleteTask = deleteTask;
