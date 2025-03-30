@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GRIND Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>THE GRIND TRACKER</h1>
+      
+      <div class="time-container">
+        <div class="time-info">
+          <div class="time-row">
+            <div class="time-block">
+              <div class="time-label">Time left today:</div>
+              <div class="time-value" id="time-left">--:--</div>
+            </div>
+            
+            <div class="time-block">
+              <div class="time-label">Time needed:</div>
+              <div class="time-value" id="time-needed">--:--</div>
+            </div>
+          </div>
+          
+          <div class="time-row">
+            <div class="time-block">
+              <div class="time-label">Tasks completed:</div>
+              <div class="time-value" id="tasks-completed">0/0</div>
+            </div>
+            
+            <div class="time-block">
+              <div class="time-label">Time efficiency:</div>
+              <div class="time-value" id="time-efficiency">--</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="progress-container">
+          <svg class="progress-circle" viewBox="0 0 100 100" id="progress-circle-svg">
+            <circle class="progress-background" cx="50" cy="50" r="45"></circle>
+            <circle class="progress-value" id="progress-circle" cx="50" cy="50" r="45" stroke-dasharray="283" stroke-dashoffset="283"></circle>
+          </svg>
+          <div class="progress-text">
+            <span id="progress-percentage">0%</span>
+            <span class="progress-subtext">of day planned</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="motivation" id="motivation-quote">
+        While you rest, someone else is grinding.
+      </div>
+    </div>
+    
+    <div class="task-section">
+      <h2>Today's Grind</h2>
+      
+      <div class="task-list" id="task-list">
+        <!-- Tasks will be dynamically added here -->
+      </div>
+    </div>
+    
+    <div class="new-task">
+      <h2>Add New Task</h2>
+      
+      <div class="task-form">
+        <input type="text" id="new-task-name" placeholder="What needs to get done?">
+        
+        <div class="time-row">
+          <span>Time needed:</span>
+          <select id="new-task-time">
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="90">1.5 hours</option>
+            <option value="120">2 hours</option>
+          </select>
+        </div>
+        
+        <button class="add-button" id="add-task-btn">
+          <span class="icon">➕</span> Add Task
+        </button>
+      </div>
+    </div>
+    
+    <div class="reminder">
+      <p>Reminder</p>
+      <p>Time is running out. You need to grind NOW.</p>
+      <p id="life-counter" style="font-size: 14px; margin-top: 8px; color: #ff9999;">Average human lifespan: 4,000 weeks. Make each one count.</p>
+    </div>
+    
+    <!-- Time Perspective Modal -->
+    <div id="time-perspective-modal" class="modal-overlay">
+      <div class="modal-content">
+        <button id="close-modal" class="modal-close">×</button>
+        <h2 class="modal-title">Your Time Perspective</h2>
+        
+        <div class="time-perspective-grid">
+          <div class="time-card">
+            <div class="time-card-title">Week Progress</div>
+            <div class="time-card-value" id="week-progress">32%</div>
+            <div class="time-card-progress">
+              <div class="time-card-bar" id="week-bar" style="width: 32%"></div>
+            </div>
+          </div>
+          
+          <div class="time-card">
+            <div class="time-card-title">Month Progress</div>
+            <div class="time-card-value" id="month-progress">47%</div>
+            <div class="time-card-progress">
+              <div class="time-card-bar" id="month-bar" style="width: 47%"></div>
+            </div>
+          </div>
+          
+          <div class="time-card">
+            <div class="time-card-title">Year Progress</div>
+            <div class="time-card-value" id="year-progress">23%</div>
+            <div class="time-card-progress">
+              <div class="time-card-bar" id="year-bar" style="width: 23%"></div>
+            </div>
+          </div>
+          
+          <div class="time-card">
+            <div class="time-card-title">Productive Hours This Week</div>
+            <div class="time-card-value" id="productive-hours">8.5h</div>
+            <div class="time-card-progress">
+              <div class="time-card-bar" id="productive-bar" style="width: 21%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="motivation-message" id="perspective-motivation">
+          Another week is slipping by. What will you have to show for it? Someone out there is making the most of every minute. Will that be you?
+        </div>
+        
+        <div class="life-perspective">
+          <div class="time-card-title">Your Life in Weeks (Each square = 1 week)</div>
+          <div class="life-grid" id="life-grid">
+            <!-- Will be filled with JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

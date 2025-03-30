@@ -1,0 +1,441 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+/* Base styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #1a1a1a;
+  color: white;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background-color: #2d2d2d;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Header with San Andreas style title */
+.header {
+  background-color: #000;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-family: 'Anton', sans-serif;
+  font-size: 36px;
+  color: white;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 15px 0;
+  letter-spacing: 1px;
+  /* Black outline */
+  text-shadow: 
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000;
+  /* Subtle transform for distinction */
+  transform: scaleY(1.2);
+  transform-origin: center;
+}
+
+.time-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.time-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.time-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.time-block {
+  flex: 1;
+}
+
+.time-label {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 5px;
+}
+
+.time-value {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Progress circle */
+.progress-container {
+  width: 120px;
+  height: 120px;
+  position: relative;
+  margin-left: 20px;
+  cursor: pointer;
+}
+
+.progress-circle {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.progress-background {
+  fill: none;
+  stroke: #333;
+  stroke-width: 8;
+}
+
+.progress-value {
+  fill: none;
+  stroke: #f0b400;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s;
+}
+
+.progress-danger {
+  stroke: #ff3333;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.progress-subtext {
+  font-size: 12px;
+  color: #aaa;
+  display: block;
+}
+
+/* Motivation quote */
+.motivation {
+  background-color: #333;
+  padding: 12px;
+  border-radius: 6px;
+  border-left: 4px solid #f0b400;
+  text-align: center;
+  font-style: italic;
+  margin-top: 15px;
+}
+
+/* Task section */
+.task-section h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+}
+
+.task-list {
+  margin-bottom: 20px;
+}
+
+.task-item {
+  background-color: #333;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-item.active {
+  border-left: 4px solid #0080ff;
+}
+
+.task-item.completed {
+  opacity: 0.5;
+}
+
+.task-info {
+  flex: 1;
+}
+
+.task-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.task-name.completed {
+  text-decoration: line-through;
+}
+
+.task-time {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.task-timer {
+  font-family: monospace;
+  font-size: 18px;
+  margin: 0 10px;
+}
+
+/* Button styles */
+.button-group {
+  display: flex;
+  gap: 5px;
+}
+
+button {
+  border: none;
+  border-radius: 4px;
+  padding: 8px;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-play {
+  background-color: #0080ff;
+}
+
+.btn-pause {
+  background-color: #ff4040;
+}
+
+.btn-complete {
+  background-color: #00aa00;
+}
+
+.btn-delete {
+  background-color: #555;
+}
+
+/* New task form */
+.new-task {
+  background-color: #333;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.new-task h2 {
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input, select {
+  padding: 8px;
+  background-color: #444;
+  border: none;
+  border-radius: 4px;
+  color: white;
+}
+
+.add-button {
+  background-color: #0080ff;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* Reminder section */
+.reminder {
+  background-color: #7a0000;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.reminder p:first-child {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+.reminder p:last-child {
+  margin-bottom: 0;
+}
+
+/* Time Perspective Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-content {
+  background-color: #2d2d2d;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.modal-title {
+  font-size: 22px;
+  margin-top: 0;
+  margin-bottom: 20px;
+  text-align: center;
+  color: #f0b400;
+}
+
+.time-perspective-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.time-card {
+  background-color: #333;
+  border-radius: 8px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.time-card-title {
+  font-size: 16px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.time-card-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.time-card-progress {
+  width: 100%;
+  height: 8px;
+  background-color: #444;
+  border-radius: 4px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.time-card-bar {
+  height: 100%;
+  background-color: #f0b400;
+  border-radius: 4px;
+  transition: width 0.5s;
+}
+
+.time-card-bar.danger {
+  background-color: #ff4040;
+}
+
+.motivation-message {
+  margin-top: 25px;
+  padding: 15px;
+  background-color: #222;
+  border-radius: 8px;
+  border-left: 4px solid #f0b400;
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+  font-style: italic;
+}
+
+.life-perspective {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.life-grid {
+  display: grid;
+  grid-template-columns: repeat(52, 1fr);
+  gap: 2px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.life-week {
+  width: 100%;
+  padding-bottom: 100%; /* Make square */
+  background-color: #444;
+  border-radius: 2px;
+}
+
+.life-week.past {
+  background-color: #f0b400;
+}
+
+.life-week.current {
+  background-color: #ff4040;
+}
+
+/* Media queries for responsive design */
+@media (max-width: 600px) {
+  .time-container {
+    flex-direction: column;
+  }
+  
+  .progress-container {
+    margin: 20px auto 0 auto;
+  }
+  
+  .time-perspective-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .header h1 {
+    font-size: 28px;
+  }
+}
+
