@@ -1,9 +1,9 @@
 /* Google Fonts Import */
-@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Anton&display=swap");
 
 /* Base styles */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #1a1a1a;
   color: white;
   margin: 0;
@@ -28,7 +28,7 @@ body {
 }
 
 .header h1 {
-  font-family: 'Anton', sans-serif;
+  font-family: "Anton", sans-serif;
   font-size: 36px;
   color: white;
   text-transform: uppercase;
@@ -36,10 +36,7 @@ body {
   margin: 0 0 15px 0;
   letter-spacing: 1px;
   /* Black outline */
-  text-shadow: 
-    -2px -2px 0 #000,
-    2px -2px 0 #000,
-    -2px 2px 0 #000,
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000,
     2px 2px 0 #000;
   /* Subtle transform for distinction */
   transform: scaleY(1.2);
@@ -192,6 +189,30 @@ body {
   margin: 0 10px;
 }
 
+.task-item {
+  position: relative;
+  overflow: hidden; /* Keep the progress bar within the task item */
+  z-index: 1; /* Ensure content stays above the progress background */
+}
+
+.task-progress-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(40, 180, 70, 0.2); /* Green with transparency */
+  width: 0%; /* Start at 0% width */
+  z-index: -1; /* Place behind the task content */
+  transition: width 1s linear;
+}
+
+.task-info,
+.button-group,
+.task-timer {
+  position: relative;
+  z-index: 2;
+}
+
 /* Button styles */
 .button-group {
   display: flex;
@@ -245,7 +266,8 @@ button {
   gap: 10px;
 }
 
-input, select {
+input,
+select {
   padding: 8px;
   background-color: #444;
   border: none;
@@ -425,17 +447,16 @@ input, select {
   .time-container {
     flex-direction: column;
   }
-  
+
   .progress-container {
     margin: 20px auto 0 auto;
   }
-  
+
   .time-perspective-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .header h1 {
     font-size: 28px;
   }
 }
-
