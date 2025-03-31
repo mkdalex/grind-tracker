@@ -1,6 +1,9 @@
 // Task data structure and state variables
 let tasks = [];
 let activeTasks = {}; // Format: { taskId: { timeSpent: seconds, interval: intervalId } }
+let dayExtension = 0; // Additional minutes added to the day
+let dayExtended = false; // Flag to track if day has been extended
+let extensionModalShown = false; // Track if extension modal is currently shown
 
 // Motivational quotes
 const motivationalQuotes = [
@@ -40,6 +43,7 @@ const percentageText = document.getElementById("progress-percentage");
 function init() {
   loadTasksFromStorage();
   loadActiveTasksState();
+  loadDayExtensionState(); // Load day extension state
 
   updateTimeLeft();
   updateTaskList();
@@ -50,7 +54,17 @@ function init() {
     const now = new Date();
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59);
-    const minutesLeft = Math.floor((endOfDay - now) / 60000);
+
+    // Adjust minutes left calculation to include day extension
+    let minutesLeft = Math.floor((endOfDay - now) / 60000) + dayExtension;
+
+    // Handle post-midnight case
+    if (now.getHours() < 3 && now.getHours() >= 0 && dayExtended) {
+      const midnight = new Date();
+      midnight.setHours(0, 0, 0, 0);
+      minutesLeft = dayExtension - Math.floor((now - midnight) / 60000);
+      minutesLeft = Math.max(0, minutesLeft);
+    }
 
     const totalMinutes = tasks
       .filter((task) => !task.completed)
@@ -61,6 +75,9 @@ function init() {
 
   addTaskBtn.addEventListener("click", addNewTask);
   setupTimePerspectiveModal();
+
+  // Check for showing extension modal on init if needed
+  setTimeout(checkShowDayExtensionModal, 1000);
 }
 
 function setupTimePerspectiveModal() {
@@ -87,6 +104,322 @@ function setupTimePerspectiveModal() {
 }
 
 // =============================================
+// Day Extension Functions
+// =============================================
+
+function checkShowDayExtensionModal() {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  // Show extension modal after 11:30 PM if day hasn't already been extended 3 times
+  // and the modal isn't already shown
+  if (
+    !extensionModalShown &&
+    ((currentHour === 23 && currentMinute >= 30) ||
+      (currentHour >= 0 && currentHour < 3))
+  ) {
+    if (dayExtension < 9 * 60) {
+      // Max 9 hours extension (3 extensions of 3 hours)
+      showDayExtensionModal();
+    }
+  }
+}
+
+// Create a function to show the day extension modal
+function showDayExtensionModal() {
+  // Prevent showing multiple modals
+  if (extensionModalShown) return;
+  extensionModalShown = true;
+
+  // Create modal if it doesn't exist
+  let modal = document.getElementById("extension-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "extension-modal";
+    modal.className = "modal-overlay";
+
+    modal.innerHTML = `
+      <div class="modal-content extension-modal-content">
+        <div class="modal-header">
+          <h3>It's getting late...</h3>
+          <button class="modal-close" id="close-extension-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <p>Midnight is approaching. Would you like to extend your day?</p>
+          <div class="modal-buttons">
+            <button id="extend-day-btn" class="extend-day-btn">🕒 Extend Day +3h</button>
+            <button id="start-new-day-btn" class="new-day-btn">🔄 Start New Day</button>
+            <button id="remind-later-btn" class="remind-later-btn">Remind Me Later</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add event listeners
+    document.getElementById("extend-day-btn").addEventListener("click", () => {
+      extendDay();
+      closeExtensionModal();
+    });
+
+    document
+      .getElementById("start-new-day-btn")
+      .addEventListener("click", () => {
+        startNewDay();
+        closeExtensionModal();
+      });
+
+    document
+      .getElementById("remind-later-btn")
+      .addEventListener("click", () => {
+        // Remind in 15 minutes
+        setTimeout(() => {
+          extensionModalShown = false;
+          checkShowDayExtensionModal();
+        }, 15 * 60 * 1000);
+        closeExtensionModal();
+      });
+
+    document
+      .getElementById("close-extension-modal")
+      .addEventListener("click", closeExtensionModal);
+  }
+
+  // Show the modal
+  modal.classList.add("active");
+}
+
+// Function to show start new day modal
+function showStartNewDayModal() {
+  // Prevent showing multiple modals
+  if (extensionModalShown) return;
+  extensionModalShown = true;
+
+  // Create modal if it doesn't exist
+  let modal = document.getElementById("new-day-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "new-day-modal";
+    modal.className = "modal-overlay";
+
+    modal.innerHTML = `
+      <div class="modal-content new-day-modal-content">
+        <div class="modal-header">
+          <h3>Start a New Day?</h3>
+          <button class="modal-close" id="close-new-day-modal">×</button>
+        </div>
+        <div class="modal-body">
+          <p>Would you like to start a new day? This will archive completed tasks and reset your timer.</p>
+          <div class="modal-buttons">
+            <button id="confirm-new-day-btn" class="confirm-new-day-btn">🔄 Start New Day</button>
+            <button id="continue-day-btn" class="continue-day-btn">Continue Current Day</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add event listeners
+    document
+      .getElementById("confirm-new-day-btn")
+      .addEventListener("click", () => {
+        archiveCompletedTasks();
+        dayExtension = 0;
+        dayExtended = false;
+        saveDayExtensionState();
+        updateTimeLeft();
+        showNewDayNotification();
+        closeNewDayModal();
+      });
+
+    document
+      .getElementById("continue-day-btn")
+      .addEventListener("click", closeNewDayModal);
+    document
+      .getElementById("close-new-day-modal")
+      .addEventListener("click", closeNewDayModal);
+  }
+
+  // Show the modal
+  modal.classList.add("active");
+}
+
+// Functions to close the modals
+function closeExtensionModal() {
+  const modal = document.getElementById("extension-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    extensionModalShown = false;
+  }
+}
+
+function closeNewDayModal() {
+  const modal = document.getElementById("new-day-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    extensionModalShown = false;
+  }
+}
+
+// Function to extend the day by 3 hours
+function extendDay() {
+  // Add 3 hours (180 minutes) to the day
+  dayExtension += 180;
+  dayExtended = true;
+
+  // Save the extension state
+  saveDayExtensionState();
+
+  // Update the UI
+  updateTimeLeft();
+
+  // Show notification
+  showExtensionNotification();
+}
+
+// Function to start a new day
+function startNewDay() {
+  // Archive completed tasks
+  archiveCompletedTasks();
+
+  // Reset day extension
+  dayExtension = 0;
+  dayExtended = false;
+
+  // Save state
+  saveDayExtensionState();
+
+  // Update UI
+  updateTimeLeft();
+
+  // Show notification
+  showNewDayNotification();
+}
+
+// Function to archive completed tasks
+function archiveCompletedTasks() {
+  // Get history from storage or initialize empty array
+  const history = JSON.parse(
+    localStorage.getItem("grindTrackerHistory") || "[]"
+  );
+
+  // Get completed tasks
+  const completedTasks = tasks.filter((task) => task.completed);
+
+  if (completedTasks.length > 0) {
+    // Create history entry
+    const entry = {
+      date: new Date().toISOString().split("T")[0],
+      tasks: completedTasks,
+      totalTime: completedTasks.reduce(
+        (total, task) => total + task.timeAllocated,
+        0
+      ),
+    };
+
+    // Add to history
+    history.unshift(entry);
+
+    // Save history (limit to 30 days)
+    localStorage.setItem(
+      "grindTrackerHistory",
+      JSON.stringify(history.slice(0, 30))
+    );
+
+    // Remove completed tasks from current list
+    tasks = tasks.filter((task) => !task.completed);
+    saveTasksToStorage();
+  }
+
+  // Update task list
+  updateTaskList();
+}
+
+// Functions to show notifications
+function showExtensionNotification() {
+  showNotification("Day extended by 3 hours!", "#0080ff");
+}
+
+function showNewDayNotification() {
+  showNotification("New day started! Completed tasks archived.", "#00aa00");
+}
+
+function showNotification(message, color) {
+  // Check if notification already exists
+  let notification = document.getElementById("grind-notification");
+
+  if (!notification) {
+    notification = document.createElement("div");
+    notification.id = "grind-notification";
+    notification.className = "grind-notification";
+    document.body.appendChild(notification);
+  }
+
+  // Set content and style
+  notification.textContent = message;
+  notification.style.backgroundColor = color;
+
+  // Show notification
+  notification.classList.add("show");
+
+  // Hide after 3 seconds
+  setTimeout(() => {
+    notification.classList.remove("show");
+  }, 3000);
+}
+
+// Save/load day extension state
+function saveDayExtensionState() {
+  const state = {
+    dayExtension,
+    dayExtended,
+    lastSaved: new Date().toISOString(),
+  };
+
+  localStorage.setItem("grindTrackerDayExtension", JSON.stringify(state));
+}
+
+function loadDayExtensionState() {
+  const storedState = localStorage.getItem("grindTrackerDayExtension");
+
+  if (storedState) {
+    const state = JSON.parse(storedState);
+
+    // Check if the extension is from today
+    const lastSaved = new Date(state.lastSaved);
+    const now = new Date();
+
+    // If it's the same day or it's past midnight but before 3am (and extension was saved yesterday)
+    if (
+      isSameDay(lastSaved, now) ||
+      (now.getHours() < 3 &&
+        lastSaved.getDate() === now.getDate() - 1 &&
+        lastSaved.getMonth() === now.getMonth() &&
+        lastSaved.getFullYear() === now.getFullYear())
+    ) {
+      dayExtension = state.dayExtension;
+      dayExtended = state.dayExtended;
+    } else {
+      // It's a new day, reset the extension
+      dayExtension = 0;
+      dayExtended = false;
+    }
+  }
+}
+
+// Helper function to check if two dates are the same day
+function isSameDay(date1, date2) {
+  return (
+    date1.getDate() === date2.getDate() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getFullYear() === date2.getFullYear()
+  );
+}
+
+// =============================================
 // Time and Progress Tracking
 // =============================================
 
@@ -95,9 +428,35 @@ function updateTimeLeft() {
   const endOfDay = new Date();
   endOfDay.setHours(23, 59, 59);
 
-  const minutesLeft = Math.floor((endOfDay - now) / 60000);
+  // Add extension time if day has been extended
+  let minutesLeft = Math.floor((endOfDay - now) / 60000) + dayExtension;
+
+  // If it's past midnight and day has been extended, calculate correctly
+  if (now.getHours() < 3 && now.getHours() >= 0 && dayExtended) {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+
+    // Minutes since midnight plus remaining extension time
+    minutesLeft = dayExtension - Math.floor((now - midnight) / 60000);
+
+    // Ensure we don't show negative time
+    minutesLeft = Math.max(0, minutesLeft);
+
+    // If extension time is up, we might need to start a new day
+    if (minutesLeft <= 0) {
+      dayExtended = false;
+      dayExtension = 0;
+      // Show new day modal when extension time is up
+      showStartNewDayModal();
+    }
+  }
+
   timeLeftEl.textContent = formatTime(minutesLeft);
 
+  // Check if we should show the extension modal
+  checkShowDayExtensionModal();
+
+  // Update total time needed display
   updateTimeNeeded();
 }
 
@@ -111,7 +470,17 @@ function updateTimeNeeded() {
   const now = new Date();
   const endOfDay = new Date();
   endOfDay.setHours(23, 59, 59);
-  const minutesLeft = Math.floor((endOfDay - now) / 60000);
+
+  // Calculate minutes left with extension
+  let minutesLeft = Math.floor((endOfDay - now) / 60000) + dayExtension;
+
+  // Handle post-midnight case
+  if (now.getHours() < 3 && now.getHours() >= 0 && dayExtended) {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    minutesLeft = dayExtension - Math.floor((now - midnight) / 60000);
+    minutesLeft = Math.max(0, minutesLeft);
+  }
 
   if (totalMinutes > minutesLeft) {
     timeNeededEl.style.color = "#ff5555";
@@ -168,110 +537,119 @@ function updateProgressCircle(totalMinutes, minutesLeft) {
 }
 
 function updateProgressBackground(task) {
-  const taskEl = document.querySelector(`.task-item[data-task-id="${task.id}"]`);
+  const taskEl = document.querySelector(
+    `.task-item[data-task-id="${task.id}"]`
+  );
   if (!taskEl) return;
-  
-  let progressBg = taskEl.querySelector('.task-progress-background');
-  let progressHandle = taskEl.querySelector('.task-progress-handle');
-  
+
+  let progressBg = taskEl.querySelector(".task-progress-background");
+  let progressHandle = taskEl.querySelector(".task-progress-handle");
+
   if (!progressBg) {
-    progressBg = document.createElement('div');
-    progressBg.className = 'task-progress-background';
+    progressBg = document.createElement("div");
+    progressBg.className = "task-progress-background";
     taskEl.appendChild(progressBg);
-    
+
     // Create the handle element
-    progressHandle = document.createElement('div');
-    progressHandle.className = 'task-progress-handle';
+    progressHandle = document.createElement("div");
+    progressHandle.className = "task-progress-handle";
     taskEl.appendChild(progressHandle);
-    
+
     // Setup drag functionality
     setupProgressDragging(progressBg, progressHandle, task);
   }
-  
+
   const timeSpent = activeTasks[task.id].timeSpent;
   const timeSpentMinutes = timeSpent / 60;
-  const percentComplete = Math.min(100, (timeSpentMinutes / task.timeAllocated) * 100);
-  
+  const percentComplete = Math.min(
+    100,
+    (timeSpentMinutes / task.timeAllocated) * 100
+  );
+
   // Update width of the progress background
   progressBg.style.width = `${percentComplete}%`;
-  
+
   // Position the handle at the end of the progress bar
   progressHandle.style.left = `calc(${percentComplete}% - 4px)`;
-  
+
   // Adjust the intensity as it progresses
   const alpha = 0.2 + (percentComplete / 100) * 0.1;
   progressBg.style.backgroundColor = `rgba(40, 180, 70, ${alpha})`;
-  
+
   // Update the timer display
-  const timerDisplay = taskEl.querySelector('.task-timer');
+  const timerDisplay = taskEl.querySelector(".task-timer");
   if (timerDisplay) {
     timerDisplay.textContent = formatSeconds(timeSpent);
   }
 }
 
-
 function setupProgressDragging(progressElement, handleElement, task) {
   let isDragging = false;
   let startX, startWidth;
-  
-  const taskEl = progressElement.closest('.task-item');
+
+  const taskEl = progressElement.closest(".task-item");
   if (!taskEl) return;
-  
+
   // Use the handle for dragging
-  handleElement.addEventListener('mousedown', function(e) {
+  handleElement.addEventListener("mousedown", function (e) {
     isDragging = true;
     startX = e.clientX;
     startWidth = parseFloat(progressElement.style.width) || 0;
     e.preventDefault();
-    
+
     // Add a class to show we're dragging
-    taskEl.classList.add('dragging');
+    taskEl.classList.add("dragging");
   });
-  
-  document.addEventListener('mousemove', function(e) {
+
+  document.addEventListener("mousemove", function (e) {
     if (!isDragging) return;
-    
+
     const taskRect = taskEl.getBoundingClientRect();
     const offsetX = e.clientX - startX;
-    
+
     // Calculate new width percentage based on task element width
-    const newWidthPercent = Math.min(100, Math.max(0, startWidth + (offsetX / taskRect.width) * 100));
-    
+    const newWidthPercent = Math.min(
+      100,
+      Math.max(0, startWidth + (offsetX / taskRect.width) * 100)
+    );
+
     // Update the progress bar width
     progressElement.style.width = `${newWidthPercent}%`;
-    
+
     // Update the handle position
     handleElement.style.left = `calc(${newWidthPercent}% - 4px)`;
-    
+
     // Update the time spent based on the new width
     const taskId = parseInt(taskEl.dataset.taskId);
     if (activeTasks[taskId]) {
       const newTimeMinutes = (newWidthPercent / 100) * task.timeAllocated;
       activeTasks[taskId].timeSpent = Math.round(newTimeMinutes * 60);
-      
+
       // Update the timer display
-      const timerDisplay = taskEl.querySelector('.task-timer');
+      const timerDisplay = taskEl.querySelector(".task-timer");
       if (timerDisplay) {
         timerDisplay.textContent = formatSeconds(activeTasks[taskId].timeSpent);
       }
-      
+
       // Update the "Spent" text if it exists
-      const taskTime = taskEl.querySelector('.task-time');
+      const taskTime = taskEl.querySelector(".task-time");
       if (taskTime) {
         const currentText = taskTime.textContent;
-        const spentIndex = currentText.indexOf('• Spent:');
+        const spentIndex = currentText.indexOf("• Spent:");
         if (spentIndex !== -1) {
           const baseText = currentText.substring(0, spentIndex);
-          taskTime.textContent = `${baseText}• Spent: ${formatTime(Math.floor(activeTasks[taskId].timeSpent / 60))}`;
+          taskTime.textContent = `${baseText}• Spent: ${formatTime(
+            Math.floor(activeTasks[taskId].timeSpent / 60)
+          )}`;
         }
       }
     }
   });
-  
-  document.addEventListener('mouseup', function() {
+
+  document.addEventListener("mouseup", function () {
     if (isDragging) {
       isDragging = false;
-      taskEl.classList.remove('dragging');
+      taskEl.classList.remove("dragging");
       saveActiveTasksState();
     }
   });
@@ -365,69 +743,90 @@ function addNewTask() {
 // =============================================
 
 function updateTaskList() {
-  taskListEl.innerHTML = '';
-  
-  tasks.forEach(task => {
-    const taskEl = document.createElement('div');
-    taskEl.className = `task-item ${task.completed ? 'completed' : ''} ${activeTasks[task.id] ? 'active' : ''}`;
+  taskListEl.innerHTML = "";
+
+  tasks.forEach((task) => {
+    const taskEl = document.createElement("div");
+    taskEl.className = `task-item ${task.completed ? "completed" : ""} ${
+      activeTasks[task.id] ? "active" : ""
+    }`;
     taskEl.dataset.taskId = task.id;
-    
+
     const isActive = !!activeTasks[task.id];
     const isRunning = isActive && activeTasks[task.id].interval;
     const timeSpent = isActive ? activeTasks[task.id].timeSpent : 0;
-    
+
     taskEl.innerHTML = `
       <div class="task-info">
-        <div class="task-name ${task.completed ? 'completed' : ''}">${task.name}</div>
+        <div class="task-name ${task.completed ? "completed" : ""}">${
+      task.name
+    }</div>
         <div class="task-time">
           Allocated: ${formatTime(task.timeAllocated)}
-          ${isActive ? `• Spent: ${formatTime(Math.floor(timeSpent / 60))}` : ''}
+          ${
+            isActive ? `• Spent: ${formatTime(Math.floor(timeSpent / 60))}` : ""
+          }
         </div>
       </div>
       
-      ${isActive ? `<div class="task-timer">${formatSeconds(timeSpent)}</div>` : ''}
+      ${
+        isActive
+          ? `<div class="task-timer">${formatSeconds(timeSpent)}</div>`
+          : ""
+      }
       
       <div class="button-group">
-        ${!task.completed ? `
-          <button class="btn-${isRunning ? 'pause' : 'play'}" onclick="toggleTimer(${task.id})">
-            ${isRunning ? '⏸️' : '▶️'}
+        ${
+          !task.completed
+            ? `
+          <button class="btn-${
+            isRunning ? "pause" : "play"
+          }" onclick="toggleTimer(${task.id})">
+            ${isRunning ? "⏸️" : "▶️"}
           </button>
-          <button class="btn-complete" onclick="completeTask(${task.id})">✓</button>
-        ` : ''}
+          <button class="btn-complete" onclick="completeTask(${
+            task.id
+          })">✓</button>
+        `
+            : ""
+        }
         <button class="btn-delete" onclick="deleteTask(${task.id})">🗑️</button>
       </div>
     `;
-    
+
     taskListEl.appendChild(taskEl);
-    
+
     // Add progress elements for active tasks
     if (isActive) {
       // Add the progress background
-      const progressBg = document.createElement('div');
-      progressBg.className = 'task-progress-background';
+      const progressBg = document.createElement("div");
+      progressBg.className = "task-progress-background";
       taskEl.appendChild(progressBg);
-      
+
       // Add the separate handle element
-      const handle = document.createElement('div');
-      handle.className = 'task-progress-handle';
+      const handle = document.createElement("div");
+      handle.className = "task-progress-handle";
       taskEl.appendChild(handle);
-      
+
       // Set up dragging
       setupProgressDragging(progressBg, handle, task);
-      
+
       // Set initial progress
-      const percentComplete = Math.min(100, (timeSpent / 60 / task.timeAllocated) * 100);
+      const percentComplete = Math.min(
+        100,
+        (timeSpent / 60 / task.timeAllocated) * 100
+      );
       progressBg.style.width = `${percentComplete}%`;
-      
+
       // Position the handle at the progress point
       handle.style.left = `calc(${percentComplete}% - 4px)`;
-      
+
       // Set background alpha
       const alpha = 0.2 + (percentComplete / 100) * 0.1;
       progressBg.style.backgroundColor = `rgba(40, 180, 70, ${alpha})`;
     }
   });
-  
+
   updateTimeNeeded();
 }
 
@@ -586,6 +985,8 @@ function formatSeconds(seconds) {
 window.toggleTimer = toggleTimer;
 window.completeTask = completeTask;
 window.deleteTask = deleteTask;
+window.extendDay = extendDay;
+window.startNewDay = startNewDay;
 
 // Initialize when the page loads
 window.addEventListener("load", init);
